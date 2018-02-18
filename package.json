@@ -10,7 +10,11 @@
     "test": "jest && standard"
   },
   "dependencies": {
-    "probot": "^5.0.0"
+    "follow-redirects": "^1.4.1",
+    "git-clone": "^0.1.0",
+    "mkdirp": "^0.5.1",
+    "probot": "^5.0.0",
+    "tar-fs": "^1.16.0"
   },
   "devDependencies": {
     "jest": "^21.2.1",
