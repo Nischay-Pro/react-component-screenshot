@@ -4,6 +4,9 @@ const clone = require('git-clone');
 const path = require('path');
 const https = require('follow-redirects').https;
 const mkdirp = require('mkdirp');
+const render = require('react-node-render');
+const temp = require('temp');
+const npm = require('npm');
 
 module.exports = (robot) => {
 	robot.on('pull_request.reopened', receive);
@@ -50,9 +53,21 @@ module.exports = (robot) => {
 					files.data.map(element => {
 						profn.push(downloadFile(context, element));
 					});
-					Promise.all(profn).then(() => {
-						console.log('done');
-					}).catch(console.log(err));
+					Promise.all(profn).then((file) => {
+						console.log("Yum Yum");
+						let package = require(path.join('tmp', repo.owner, repo.repo, 'package.json'));
+						let dependencies = [];
+						for (var k in package.dependencies) dependencies.push(k);
+						let depPath = []
+						dependencies.map(element => {
+							depPath.push(tempUse(element));
+						});
+						Promise.all(depPath).then((dir) => {
+							depPath[] = requireMany(dir);
+						});
+					}).catch((err) => {
+						console.log(err)
+					});
 				} else console.log(err);
 			});
 
@@ -66,23 +81,48 @@ module.exports = (robot) => {
 
 async function downloadFile(context, element) {
 	return new Promise((reject, resolve) => {
-		let file = {
-			name: path.basename(element.filename),
-			path: path.dirname(element.filename),
-			url: element.raw_url
-		}
-		mkdirp(file.path, function (err) {
-			if (err) {
-				console.error(err)
-				reject(err);
-			} else {
-				console.log(file.url);
-				let makefile = fs.createWriteStream(path.join('tmp', file.path, file.name));
-				let request = https.get(file.url, function (response) {
-					response.pipe(makefile);
-				});
-				resolve();
+		try {
+			let dir = element.filename.substr(0, element.filename.lastIndexOf("/"));
+			let file = {
+				name: path.basename(element.filename),
+				path: dir,
+				url: element.raw_url
 			}
-		});
+			mkdirp(file.path, function (err) {
+				if (err) {
+					reject(err);
+				} else {
+					let makefile = fs.createWriteStream(path.join('tmp', context.repo().owner, context.repo().repo, file.path, file.name));
+					let request = https.get(file.url, function (response) {
+						response.pipe(makefile);
+					});
+					makefile.on('finish', () => {
+						resolve(file);
+					});
+				}
+			});
+		} catch (err) {
+			reject(err);
+		}
 	});
+}
+
+function tempUse(module, cb) {
+	return new Promise((reject, resolve) => {
+		npm.load({}, function () {
+			try {
+				npm.commands.install(temp.dir, [module], function (err, data) {
+					var dir = data[0][1];
+					var mod = require(__dirname + '/' + dir);
+					resolve(mod);
+				});
+			} catch (exception) {
+				reject(exception);
+			}
+		})
+	});
+}
+
+function requireMany() {
+	return Array.prototype.slice.call(arguments).map(require)
 }
